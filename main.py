@@ -1,8 +1,9 @@
 import requests
 import json
-import logging
 from telegram import KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import Application, Updater, CommandHandler, ContextTypes, MessageHandler, filters
+
+#Telegram Contest Mini Apps 2023
 
 # Ваш API key от Яндекс карт (https://developer.tech.yandex.ru/services - вам нужен JavaScript API и HTTP Геокодер)
 # !ВАЖНО этот же ключ нужно указать в файле webappsaymyaddress.html в <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&amp;apikey= и в function getAddress()
