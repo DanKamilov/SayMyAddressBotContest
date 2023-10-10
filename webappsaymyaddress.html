@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+
+
+<head>
+    <meta charset="utf-8">
+    <title>Yandex Maps Example</title>
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&amp;apikey=YANDEX_MAPS_API_KEY" type="text/javascript"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://yandex.st/jquery/2.2.3/jquery.min.js" type="text/javascript"></script>
+    <script src="geolocation.js" type="text/javascript"></script>
+    <script src="geolocation_control.js" type="text/javascript"></script>
+
+    <!-- Настраиваем размеры элементов для разных размеров экрана -->
+    <style>
+        @media (max-height: 2500px) {
+            #address{
+                font-size: 50px;
+            }
+            #marker{
+                height: 150px;
+                width: 150px;
+            }
+            #centerUserLocationButton{
+                width: 150px; height: 150px;
+                border: 9px solid #229ED9;
+                top: 83%; left: 88%;
+            }
+        }
+
+        @media (max-height: 1100px) {
+            #address{
+                font-size: 35px;
+            }
+            #marker{
+                height: 100px;
+                width: 100px;
+            }
+            #centerUserLocationButton{
+                width: 100px; height: 100px;
+                border: 6px solid #229ED9;
+                top: 81%; left: 87%;
+            }
+        }
+         @media (max-height: 700px) {
+            #address{
+                font-size: 20px;
+            }
+            #marker{
+                height: 50px;
+                width: 50px;
+            }
+            #centerUserLocationButton{
+                width: 50px; height: 50px;
+                border: 3px solid #229ED9;
+                top: 80%; left: 90%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map" style="height: 85vh; width: 100%; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;">
+        <img id="marker" style="position: absolute; z-index: 10; top: 50%; left: 50%; transform: translate(-50%, -100%);" src="https://i0.wp.com/www.worth.com/wp-content/uploads/2017/09/map-marker-icon.png?w=1024&ssl=1" alt="Marker" />
+    </div>
+    <div id='centerUserLocationButton' style="position: absolute; background-image: url('https://cdn3.iconfinder.com/data/icons/map-14/144/Map-10-1024.png'); background-size: cover; z-index: 12; transform: translate(-50%, -100%); background-color: white; border-radius: 1000px;"></div>
+    <div id="address" style="z-index: 11; top: 40%; left: 25%; background: #ffffff; padding: 10px; margin:10px; border: 3px solid #229ED9; border-radius: 10px;">...</div>
+
+    <script>
+
+        var map;
+        var marker;
+        var addressView;
+        var latitude;
+        var longitude;
+        var addressText;
+
+        ymaps.ready(init);
+
+        function init() {
+
+            // Инициализируем карту
+            map = new ymaps.Map('map', {
+                    center: [55.755814, 37.617635],
+                    zoom: 17,
+                    controls: ['geolocationControl', 'zoomControl', 'searchControl']
+                });
+
+            // настраиваем кнопку центровки на локации пользователя
+            var centerUserLocationButton = document.getElementById('centerUserLocationButton');
+            centerUserLocationButton.addEventListener('click', function () {
+                ymaps.geolocation.get().then(function (result) {
+                    // получили координаты
+                    var userCoordinates = result.geoObjects.get(0).geometry.getCoordinates();
+                    // подвинули карту
+                    map.setCenter(userCoordinates, 17);
+                });
+            });
+
+            // сдвигаем кнопку локации в правый нижний угол
+            map.controls.get('geolocationControl').options.set('position', {
+              top: 'auto',
+              left: 'auto',
+              right: 40,
+              bottom: 60});
+              map.controls.get('geolocationControl').options.set('size', 'large');
+
+            // Создаем элемент для отображения адреса
+            addressView = document.getElementById('address');
+            marker = document.getElementById('marker');
+
+            // получаем координаты центра карты
+            var newCenter = map.getCenter();
+            var coords = [newCenter[1].toPrecision(6), newCenter[0].toPrecision(6)].join(',');
+            latitude = newCenter[0]
+            longitude = newCenter[1]
+
+            // Получаем адрес по координатам и выводим его в текстовое поле
+            getAddress(coords, function (address) {
+              addressView.textContent = address;
+              addressText = address;
+            });
+
+            // Обработчик события сдвига карты
+            map.events.add('boundschange', function (event) {
+                // Получаем новые координаты центра карты
+                var newCenter = map.getCenter();
+                var coords = [newCenter[1].toPrecision(6), newCenter[0].toPrecision(6)].join(',');
+                latitude = newCenter[0]
+                longitude = newCenter[1]
+
+                getAddress(coords, function (address) {
+                    // Обновляем текст вьюхи с адресом
+                    addressView.textContent = address;
+                    addressText = address
+                });
+            });
+        }
+
+        function getAddress(coords, callback) {
+          var apiKey = 'YANDEX_MAPS_API_KEY'; // Замените на свой API-ключ
+
+          // Формируем URL запроса к API Яндекс Геокодера
+          var apiUrl = 'https://geocode-maps.yandex.ru/1.x/?format=json&lang=ru_RU&apikey=' + apiKey + '&geocode=' + coords;
+
+          // Отправляем GET-запрос
+          fetch(apiUrl)
+              .then(response => response.json())
+              .then(data => {
+                  // Парсим ответ и извлекаем адрес
+                  var address = data.response.GeoObjectCollection.featureMember[0].GeoObject.metaDataProperty.GeocoderMetaData.AddressDetails.Country.AddressLine;
+
+                  // Вызываем callback с полученным адресом
+                  callback(address);
+              })
+              .catch(error => {
+                  // Обработка ошибки
+                  console.error('Ошибка при получении адреса:', error);
+              });
+        }
+
+        // Тут обрабатываем данные координат и адреса и отправляем их в бота в метод web_app_data
+        Telegram.WebApp.ready();
+        Telegram.WebApp.MainButton.setText('Отправить').show().onClick(function () {
+            const data = JSON.stringify({latitude: latitude, longitude: longitude, address: addressText});
+            Telegram.WebApp.sendData(data);
+            Telegram.WebApp.close();
+        });
+    </script>
+</body>
+<script type="text/javascript">
+    Telegram.WebApp.expand();
+</script>
+
+</html>
