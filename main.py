@@ -14,6 +14,7 @@ MY_TELEGRAM_BOT_TOKEN = "BOT_TOKEN"
 
 # это наша функция для получения адреса по координатам.
 def get_address_from_coords(coords):
+
     PARAMS = {
         "apikey": YANDEX_MAPS_API_KEY,
         "format": "json",
@@ -23,11 +24,13 @@ def get_address_from_coords(coords):
     }
 
     try:
+        # Особенность Яндекс карт, что они воспринимают координаты в виде ДОЛГОТА, ШИРОТА
         r = requests.get(url="https://geocode-maps.yandex.ru/1.x/", params=PARAMS)
         json_data = r.json()
         address_str = json_data["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]["metaDataProperty"][
             "GeocoderMetaData"]["AddressDetails"]["Country"]["AddressLine"]
 
+        # Если прошло успешно, то переворачиваем координаты в нормальный вид ШИРОТА, ДОЛГОТА
         coords = coords.replace(" ", "")
         latitude = coords.split(",")[1]
         longitude = coords.split(",")[0]
@@ -38,6 +41,7 @@ def get_address_from_coords(coords):
     # Пробуем еще раз в случае, если что-то сорвалось при получении адреса
     except Exception as e:
         try:
+            # Пробуем перевернуть координаты и дать запрос еще раз
             coords_shir_dolg = coords
             coords = coords.replace(" ", "")
             latitude = coords.split(",")[0]
@@ -58,7 +62,7 @@ def get_address_from_coords(coords):
             return "<code>" + address_str + "</code>\n\nКоординаты (широта, долгота):\n<code>" + coords_shir_dolg + "</code>"
 
         except Exception as e:
-            # единственное что тут изменилось, так это сообщение об ошибке.
+            # Если ничего не вышло, то выдаем сообщение об ошибке
             return "Не могу определить адрес по этой локации/координатам.\n\nОтправь мне локацию или координаты:"
 
 
@@ -76,12 +80,15 @@ async def start(update, context):
 
 # Эта функция используется когда нужно получить данные координат из MiniApp
 async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+    # Получили данные из html страницы обратно
     data = json.loads(update.effective_message.web_app_data.data)
 
     keyboard = get_mini_app_keyboard()
 
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
+    # вовщращаем результат пользователю в боте
     await update.message.reply_text(
         '📍 Предположительный адрес:\n<code>' + data['address'] + "</code>\n\nКоординаты (широта, долгота):\n<code>{}, {}</code>".format(data['latitude'],data['longitude']) + '\n\nYandex Maps:\nhttps://yandex.ru/maps/?pt={},{}&z=17&l=map'.format(
             data['longitude'], data['latitude']) + '\n\nGoogle Maps:\nhttp://www.google.com/maps/place/{},{}'.format(data['latitude'],data['longitude']),
@@ -132,11 +139,11 @@ async def location(update, context):
 
     # получаем обьект сообщения (локации)
     message = update.message
-    # вытаскиваем из него долготу и ширину
+    # вытаскиваем из него долготу и широту
     current_position = (message.location.longitude, message.location.latitude)
     latitide = message.location.latitude
     longitude = message.location.longitude
-    # создаем строку в виде ДОЛГОТА,ШИРИНА
+    # создаем строку в виде ДОЛГОТА,ШИРОТА
     coords = f"{current_position[0]}, {current_position[1]}"
     # отправляем координаты в нашу функцию получения адреса
     address_str = get_address_from_coords(coords)
